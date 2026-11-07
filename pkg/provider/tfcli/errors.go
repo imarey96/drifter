@@ -49,6 +49,12 @@ var patterns = []pattern{
 		},
 	},
 	{
+		code:    drifterr.CodeConfigInvalid,
+		msg:     "a required input variable has no value",
+		hint:    "pass values with --var-file, or set TF_VAR_<name> in the environment",
+		needles: []string{"No value for required variable"},
+	},
+	{
 		code: drifterr.CodeConfigInvalid,
 		msg:  "configuration is invalid",
 		hint: "run `%s validate` for full diagnostics",

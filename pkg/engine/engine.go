@@ -62,9 +62,9 @@ func (e *Engine) Scan(ctx context.Context, targets []provider.Target) (*Report, 
 	return r, nil
 }
 
-func (e *Engine) scanOne(ctx context.Context, t provider.Target) WorkspaceReport {
+func (e *Engine) scanOne(ctx context.Context, t provider.Target) (ws WorkspaceReport) {
 	start := time.Now()
-	ws := WorkspaceReport{Path: t.Name(), Resources: []ResourceDrift{}}
+	ws = WorkspaceReport{Path: t.Name(), Resources: []ResourceDrift{}}
 	defer func() { ws.DurationMS = time.Since(start).Milliseconds() }()
 
 	out, err := e.Provider.Plan(ctx, t)

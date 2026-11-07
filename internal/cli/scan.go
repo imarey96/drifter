@@ -171,6 +171,17 @@ func resolveTargets(args []string, o *scanOpts) ([]provider.Target, error) {
 			"root modules are detected by a backend block, .terraform.lock.hcl, or .terraform directory")
 	}
 
+	// Plans run inside each module dir, so relative paths must be anchored
+	// to where the user invoked drifter.
+	varFiles := make([]string, len(o.varFiles))
+	for i, vf := range o.varFiles {
+		abs, err := filepath.Abs(vf)
+		if err != nil {
+			return nil, err
+		}
+		varFiles[i] = abs
+	}
+
 	seen := map[string]bool{}
 	var targets []provider.Target
 	for _, d := range dirs {
@@ -183,7 +194,7 @@ func resolveTargets(args []string, o *scanOpts) ([]provider.Target, error) {
 		if err != nil {
 			label = abs
 		}
-		targets = append(targets, provider.Target{Dir: abs, Label: label, VarFiles: o.varFiles, Workspace: o.workspace})
+		targets = append(targets, provider.Target{Dir: abs, Label: label, VarFiles: varFiles, Workspace: o.workspace})
 	}
 	return targets, nil
 }
