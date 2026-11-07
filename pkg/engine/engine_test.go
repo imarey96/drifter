@@ -199,3 +199,19 @@ func TestHashesMaskedOnSensitiveResources(t *testing.T) {
 		t.Errorf("etag masked on non-sensitive resource: %v", got[0].Before)
 	}
 }
+
+func TestNormalisationOnlyUpdatesAreDropped(t *testing.T) {
+	p := &tfplan.Plan{ResourceDrift: []tfplan.ResourceChange{{
+		Address: "google_storage_bucket.logs",
+		Mode:    "managed",
+		Change: tfplan.Change{
+			Actions: []string{"update"},
+			Before:  map[string]any{"name": "logs", "labels": nil},
+			After:   map[string]any{"name": "logs", "labels": map[string]any{}},
+		},
+	}}}
+	e := &Engine{Scrubber: redact.New()}
+	if got := e.Analyze(p); len(got) != 0 {
+		t.Errorf("null → {} reported as drift: %+v", got)
+	}
+}

@@ -109,17 +109,25 @@ func (e *Engine) Analyze(p *tfplan.Plan) []ResourceDrift {
 		if !ok {
 			continue
 		}
+		changes := diffChange(rc.Change, e.Scrubber)
+		if act == ActionModified && len(changes) == 0 {
+			continue // provider normalisation only, e.g. labels null → {}
+		}
 		rd := get(rc)
 		rd.Origin, rd.Action = OriginOutOfBand, act
-		rd.OutOfBand = diffChange(rc.Change, e.Scrubber)
+		rd.OutOfBand = changes
 	}
 	for _, rc := range p.ResourceChanges {
 		act, ok := classify(rc)
 		if !ok {
 			continue
 		}
+		changes := diffChange(rc.Change, e.Scrubber)
+		if act == ActionModified && len(changes) == 0 {
+			continue
+		}
 		rd := get(rc)
-		rd.Planned = diffChange(rc.Change, e.Scrubber)
+		rd.Planned = changes
 		// For out-of-band drift the observed action (e.g. destroyed in the
 		// console) is more useful than the corrective one (re-create).
 		if rd.Origin == "" {
@@ -154,7 +162,8 @@ func applyIgnores(rules *ignore.Rules, rd *ResourceDrift) {
 		return
 	}
 	remaining := markIgnored(rules, rd.Address, rd.OutOfBand) + markIgnored(rules, rd.Address, rd.Planned)
-	if rd.Action == ActionModified && remaining == 0 {
+	total := len(rd.OutOfBand) + len(rd.Planned)
+	if rd.Action == ActionModified && total > 0 && remaining == 0 {
 		rd.Ignored, rd.IgnoreRule = true, "all changed attributes"
 	}
 }

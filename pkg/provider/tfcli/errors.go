@@ -19,20 +19,37 @@ type pattern struct {
 var patterns = []pattern{
 	{
 		code: drifterr.CodeCredentials,
-		msg:  "cloud provider credentials are missing or invalid",
-		hint: "export credentials for the target account (e.g. AWS_PROFILE, GOOGLE_APPLICATION_CREDENTIALS, ARM_* variables) and retry",
+		msg:  "AWS credentials are missing or invalid",
+		hint: "set AWS_PROFILE (and run `aws sso login` if it uses SSO) or export AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY, then retry",
 		needles: []string{
 			"No valid credential sources found",
 			"NoCredentialProviders",
 			"Unable to locate credentials",
 			"failed to refresh cached credentials",
-			"could not find default credentials",
 			"ExpiredToken",
 			"InvalidClientTokenId",
 			"UnrecognizedClientException",
+			"Error: configuring Terraform AWS Provider",
+		},
+	},
+	{
+		code: drifterr.CodeCredentials,
+		msg:  "Google Cloud credentials are missing or invalid",
+		hint: "run `gcloud auth application-default login` (gcloud's own login is not used by Terraform), or set GOOGLE_APPLICATION_CREDENTIALS to a service account key file",
+		needles: []string{
+			"could not find default credentials",
+			"Attempted to load application default credentials",
+			"oauth2: \"invalid_grant\"",
+			"Reauthentication is needed",
+		},
+	},
+	{
+		code: drifterr.CodeCredentials,
+		msg:  "Azure credentials are missing or invalid",
+		hint: "run `az login`, or export ARM_CLIENT_ID/ARM_CLIENT_SECRET/ARM_TENANT_ID/ARM_SUBSCRIPTION_ID, then retry",
+		needles: []string{
 			"building AzureRM Client",
 			"Please run 'az login'",
-			"Error: configuring Terraform AWS Provider",
 		},
 	},
 	{
