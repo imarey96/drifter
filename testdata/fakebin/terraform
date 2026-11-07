@@ -1,0 +1,44 @@
+#!/bin/sh
+# Minimal terraform stand-in for tests.
+#   FAKE_TF_PLAN  path to the JSON that `show -json` prints
+#   FAKE_TF_MODE  "creds" | "drift" (default) | "clean"
+#   FAKE_TF_LOG   file that records each invocation and TF_DATA_DIR
+set -e
+
+[ -n "$FAKE_TF_LOG" ] && echo "$1 data_dir=${TF_DATA_DIR:-} tf_log=${TF_LOG:-}" >> "$FAKE_TF_LOG"
+
+case "$1" in
+  version)
+    echo '{"terraform_version":"1.9.5","platform":"darwin_arm64"}'
+    ;;
+  init)
+    echo "Terraform has been successfully initialized!"
+    ;;
+  plan)
+    if [ "$FAKE_TF_MODE" = "creds" ]; then
+      cat >&2 <<'EOF'
+╷
+│ Error: No valid credential sources found
+│
+│   with provider["registry.terraform.io/hashicorp/aws"],
+│   on main.tf line 1, in provider "aws":
+│
+│ secret was wJalrXUtnFEMI/K7MDENGbPxRfiCYEXAMPLEKEY
+╵
+EOF
+      exit 1
+    fi
+    for a in "$@"; do
+      case "$a" in -out=*) : > "${a#-out=}" ;; esac
+    done
+    [ "$FAKE_TF_MODE" = "clean" ] && exit 0
+    exit 2
+    ;;
+  show)
+    cat "$FAKE_TF_PLAN"
+    ;;
+  *)
+    echo "unexpected command: $*" >&2
+    exit 1
+    ;;
+esac

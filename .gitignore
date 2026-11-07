@@ -1,0 +1,6 @@
+/bin/
+.drifter/
+.terraform/
+*.tfplan
+*.tfstate
+*.tfstate.*
