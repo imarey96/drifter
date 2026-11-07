@@ -10,7 +10,7 @@ import (
 
 func newDiffCmd(g *globalOpts) *cobra.Command {
 	var workspace string
-	var showIgnored bool
+	var showIgnored, full bool
 	cmd := &cobra.Command{
 		Use:   "diff [resource]",
 		Short: "Show attribute-level differences for drifted resources",
@@ -52,12 +52,13 @@ The resource argument accepts '*' wildcards. Omit it to show everything.`,
 			case "markdown":
 				return render.Markdown(out, subset(r, items), render.MarkdownOptions{ShowIgnored: showIgnored})
 			}
-			render.Terminal{W: out}.Diff(items)
+			render.Terminal{W: out, Full: full}.Diff(items)
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspace, "workspace", "w", "", "only show resources from this workspace path")
 	cmd.Flags().BoolVar(&showIgnored, "show-ignored", false, "include ignored resources")
+	cmd.Flags().BoolVar(&full, "full", false, "list every attribute of destroyed resources")
 	return cmd
 }
 

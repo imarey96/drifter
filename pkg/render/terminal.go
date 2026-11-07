@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss/table"
 
 	"github.com/imarey96/drifter/pkg/engine"
+	"github.com/imarey96/drifter/pkg/redact"
 )
 
 var (
@@ -39,6 +40,9 @@ func actionStyle(a engine.Action) lipgloss.Style {
 type Terminal struct {
 	W           io.Writer
 	ShowIgnored bool
+	// Full lists every attribute of destroyed resources instead of a
+	// one-line summary.
+	Full bool
 }
 
 func (t Terminal) Scan(r *engine.Report) {
@@ -165,6 +169,11 @@ func (t Terminal) Diff(items []engine.Located) {
 		}
 		fmt.Fprintln(t.W, styleDim.Render("  "+desc))
 
+		if rd.Action == engine.ActionDestroyed && !t.Full {
+			fmt.Fprintln(t.W, "  "+destroyedSummary(rd)+styleDim.Render("  (--full for all attributes)"))
+			continue
+		}
+
 		if len(rd.OutOfBand) > 0 {
 			fmt.Fprintln(t.W)
 			fmt.Fprintln(t.W, "  "+styleBold.Render("Changed outside IaC")+styleDim.Render("  last applied state → live"))
@@ -176,6 +185,37 @@ func (t Terminal) Diff(items []engine.Located) {
 			t.changes(rd.Planned)
 		}
 	}
+}
+
+// destroyedSummary condenses a destroyed resource to its identity and what
+// an apply would do about it.
+func destroyedSummary(rd engine.ResourceDrift) string {
+	attrs := rd.OutOfBand
+	what := "deleted outside IaC; apply would re-create it"
+	if rd.Origin == engine.OriginUnapplied {
+		attrs = rd.Planned
+		what = "removed from code; apply would delete it"
+	}
+	if rd.Origin == engine.OriginOutOfBand && len(rd.Planned) == 0 {
+		what = "deleted outside IaC; no longer in code either"
+	}
+	id := ""
+	for _, key := range []string{"id", "name", "arn", "self_link"} {
+		for _, c := range attrs {
+			if c.Path == key && c.Before != nil && !c.Sensitive && c.Before != redact.Redacted {
+				id = key + " " + formatValue(c.Before, false, 80)
+				break
+			}
+		}
+		if id != "" {
+			break
+		}
+	}
+	line := what
+	if id != "" {
+		line = fmt.Sprintf("%s (was %s)", what, id)
+	}
+	return styleRed.Render(line)
 }
 
 func (t Terminal) changes(cs []engine.AttributeChange) {
