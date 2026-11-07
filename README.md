@@ -56,7 +56,7 @@ aws_autoscaling_group.*:desired_capacity
 - When a module has no `.terraform` directory, drifter runs `init` into a temporary `TF_DATA_DIR`, so your checkout stays untouched. Pass `--no-init` to fail instead. `init` may still create `.terraform.lock.hcl` if the module has none.
 - `TF_LOG*` and `TF_CLI_ARGS*` are removed from the child environment, so debug logs can't capture credentials and injected flags can't change the plan.
 - Before anything is printed or cached, the following are masked or scrubbed:
-  - values the provider marks sensitive
+  - values the provider marks sensitive, plus digests of them (`content_sha256`, `etag`, ...) and any attribute sharing a digest's value, which providers often leave unmarked
   - attributes whose names look like secrets (`password`, `token`, ...)
   - known secret formats: AWS keys, PEM keys, GitHub, GitLab and Slack tokens, JWTs, URL credentials
   - the literal values of secret-looking environment variables

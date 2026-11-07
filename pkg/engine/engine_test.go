@@ -12,6 +12,7 @@ import (
 	"github.com/imarey96/drifter/pkg/ignore"
 	"github.com/imarey96/drifter/pkg/provider"
 	"github.com/imarey96/drifter/pkg/redact"
+	"github.com/imarey96/drifter/pkg/tfplan"
 )
 
 func scanFixture(t *testing.T, rules string) *Report {
@@ -162,5 +163,39 @@ func TestProviderErrorIsScrubbed(t *testing.T) {
 	se := r.Workspaces[0].Error
 	if se.Code != string(drifterr.CodeCredentials) || strings.Contains(se.Detail, "AKIA") {
 		t.Errorf("scan error = %+v", se)
+	}
+}
+
+func TestHashesMaskedOnSensitiveResources(t *testing.T) {
+	sha1 := "61f8c4624338c9f1c8e644d7c53aef4da49ff1e3"
+	before := map[string]any{
+		"content":      "s3cr3t",
+		"content_md5":  "c25fc14b6d98599bcafa60f7a968f71f",
+		"content_sha1": sha1,
+		"id":           sha1,
+		"filename":     "./out/secret.txt",
+	}
+	sensitive := tfplan.Change{
+		Actions:         []string{"delete"},
+		Before:          before,
+		BeforeSensitive: map[string]any{"content": true},
+		AfterSensitive:  false,
+	}
+	for _, c := range diffChange(sensitive, redact.New()) {
+		masked := c.Before == redact.Sensitive
+		if want := c.Path != "filename"; masked != want {
+			t.Errorf("%s: masked=%v, want %v (value %v)", c.Path, masked, want, c.Before)
+		}
+	}
+
+	// Without sensitive values, digests are useful drift signal and stay
+	// visible, even when the schema marks a null attribute sensitive.
+	plain := tfplan.Change{
+		Actions:         []string{"delete"},
+		Before:          map[string]any{"etag": "abc123", "sensitive_content": nil},
+		BeforeSensitive: map[string]any{"sensitive_content": true},
+	}
+	if got := diffChange(plain, redact.New()); got[0].Before != "abc123" {
+		t.Errorf("etag masked on non-sensitive resource: %v", got[0].Before)
 	}
 }
